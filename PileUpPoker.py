@@ -137,7 +137,7 @@ class PileUpPoker:
         self.next_hand_button_h = 13
         # pyxel.load("card.pyxres")
 
-        pyxel.mouse(True)
+        #pyxel.mouse(True)
         pyxel.run(self.update,self.draw)
 
     def new_hand(self):
