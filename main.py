@@ -82,6 +82,7 @@ class PileUpPoker:
         self.clicked_square = Square()
         self.hand_squares = []
         self.num_in_hand = 5
+        self.score = {}
 
         self.discard_x = 10
         self.discard_y = 30
@@ -107,6 +108,7 @@ class PileUpPoker:
         self.board = []
         self.card_clicked = False
         self.clicked_square = Square()
+        self.score = {}
 
         self.board.append(Square(24,16))
         num_rows = 4
@@ -162,6 +164,99 @@ class PileUpPoker:
         self.num_in_hand = 5
         self.to_next_hand = False
 
+    def hand_score(self,hand):
+        ranks = []
+        suits = []
+        for sq in hand:
+            card = sq.card
+            if sq.has_card:
+                ranks.append(card.rank)
+                suits.append(card.suit)
+        ranks.sort()
+        suits.sort()
+        
+        if len(ranks) == 4:
+            isFourOfAKind = all(ii == ranks[0] for ii in ranks)
+            isFlush = all(ii == suits[0] for ii in suits)
+            isStraight = all(ranks[ii]+1 == ranks[ii+1] for ii in range(len(ranks)-1))
+            isStraightFlush = isFlush and isStraight
+            if isStraightFlush:
+                return ('staight flush',450)
+            elif isFourOfAKind:
+                return ('4 of a kind',325)
+            elif isStraight:
+                return ('straight',180)
+            elif isFlush:
+                return ('flush',80)
+            else:
+                ofAKind1 = 0
+                ofAKind2 = 0
+                ofAKind3 = 0
+                for r in ranks:
+                    if r == ranks[0]:
+                        ofAKind1 += 1
+                    if r == ranks[1]:
+                        ofAKind2 += 1
+                    if r == ranks[2]:
+                        ofAKind3 += 1
+                ofAKinds = [ofAKind1,ofAKind2,ofAKind3]
+                isPair = any(2 == k for k in ofAKinds)
+                isTwoPair = ranks[0] == ranks[1] and ranks[2] == ranks[3]
+                isThreeOfAKind = any(3 == k for k in ofAKinds)
+                if isThreeOfAKind:
+                    return ('3 of a kind',125)
+                elif isTwoPair:
+                    return ('2 pair',60)
+                elif isPair:
+                    return ('pair',5)
+        elif len(ranks) == 3:
+            ofAKind1 = 0
+            ofAKind2 = 0
+            for r in ranks:
+                if r == ranks[0]:
+                    ofAKind1 += 1
+                if r == ranks[1]:
+                    ofAKind2 += 1
+            ofAKinds = [ofAKind1,ofAKind2]
+            isPair = any(2 == k for k in ofAKinds)
+            isThreeOfAKind = any(3 == k for k in ofAKinds)
+            if isThreeOfAKind:
+                return ('3 of a kind',125)
+            elif isPair:
+                return ('pair',5)
+        elif len(ranks) == 2:
+            isPair = ranks[0] == ranks[1]
+            if isPair:
+                return ('pair',5)
+        
+        return ('no hand',0)
+            
+    def update_score(self):
+        indices = {
+            "row1": [0,1,2,3],
+            "row2": [4,5,6,7],
+            "row3": [8,9,10,11],
+            "row4": [12,13,14,15],
+            "col1": [0,4,8,12],
+            "col2": [1,5,9,13],
+            "col3": [2,6,10,14],
+            "col4": [3,7,11,15],
+            "corners": [0,3,12,15]
+        }
+        for name in indices:
+            ii = indices[name]
+            hand = [self.board[ii[0]],self.board[ii[1]],self.board[ii[2]],self.board[ii[3]]]
+            x = self.board[ii[3]].x
+            y = self.board[ii[3]].y
+            if name.startswith('r'):
+                x += self.board[ii[3]].w + 1
+            elif name.startswith('col'):
+                y += self.board[ii[3]].h + 1
+            else: # corners
+                x = self.board[ii[0]].x - 5
+                y = self.board[ii[0]].y - 5
+            self.score[name] = (self.hand_score(hand),[x,y])
+
     def update(self):
         if not self.card_clicked:
             for sq in self.board + self.hand_squares:
@@ -186,6 +281,8 @@ class PileUpPoker:
                     sq.card.clicked = False
                     self.card_clicked = False
                     self.clicked_square = sq
+
+        self.update_score()
 
         num_in_hand = 0
         for sq in self.hand_squares:
@@ -233,6 +330,14 @@ class PileUpPoker:
         for sq in self.board + self.hand_squares + self.discard_squares:
             sq.draw()
 
+        for name in self.score:
+            score_info = self.score[name]
+            x = score_info[1][0]
+            y = score_info[1][1]
+            hand_type = score_info[0][0]
+            score = score_info[0][1]
+            if score > 0:
+                pyxel.text(x,y,hand_type + '\n$' + str(score),7)
         if not self.game_over:
             if self.num_in_hand == 1:
                 next_hand_color = 7
