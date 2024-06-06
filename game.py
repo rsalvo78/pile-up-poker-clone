@@ -84,17 +84,17 @@ class PileUpPoker:
         self.num_in_hand = 5
         self.score = {}
 
-        self.discard_x = 10
-        self.discard_y = 30
+        self.discard_x = 0.1*pyxel.width
+        self.discard_y = 0.3*pyxel.height
         self.discard_squares = []
 
         self.game_over = False
         self.to_next_hand = False
 
-        self.next_hand_button_x = 25
-        self.next_hand_button_y = 80
         self.next_hand_button_w = 41
         self.next_hand_button_h = 13
+        self.next_hand_button_x = 0.5*pyxel.width - self.next_hand_button_w/2
+        self.next_hand_button_y = 0.85*pyxel.height - self.next_hand_button_h/2
 
         self.game_over_x = self.next_hand_button_x
         self.game_over_y = self.next_hand_button_y
@@ -262,8 +262,8 @@ class PileUpPoker:
             elif name.startswith('col'):
                 y += self.board[ii[3]].h + 1
             else: # corners
-                x = self.board[ii[0]].x - 5
-                y = self.board[ii[0]].y - 5
+                x = self.board[ii[0]].x - 20
+                y = self.board[ii[0]].y - 20
             self.score[name] = (self.hand_score(hand),[x,y])
 
     def update(self):
