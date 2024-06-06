@@ -78,44 +78,9 @@ class PileUpPoker:
     def __init__(self):
         pyxel.init(80,120)
         self.board = []
-        self.board.append(Square(24,16))
-        num_rows = 4
-        num_cols = 4
-        r = 0
-        while r < num_rows:
-            c = 0
-            while c < num_cols-1:
-                self.board.append(Square(self.board[-1].x+self.board[-1].w+self.board[-1].margin,
-                                   self.board[-1].y))
-                c += 1
-            r += 1
-            if r < num_rows:
-                self.board.append(Square(self.board[0].x,
-                                          self.board[-1].y+self.board[-1].h+self.board[-1].margin))
-
         self.card_clicked = False
         self.clicked_square = Square()
-
         self.hand_squares = []
-        hand_x = 20
-        hand_y = 100
-        num_hand_squares = 0
-        self.dealt_cards = []
-        while num_hand_squares < 5:
-            self.hand_squares.append(Square(hand_x,100))
-            # self.hand_squares[-1].has_card = True
-            while not self.hand_squares[-1].has_card:
-                dealt_num = pyxel.rndi(1,36)
-                if dealt_num not in self.dealt_cards:
-                    self.dealt_cards.append(dealt_num)
-                    info = CardInfo(dealt_num)
-                    x = self.hand_squares[-1].x
-                    y = self.hand_squares[-1].y
-                    self.hand_squares[-1].card = Card(info.suit,info.rank,x,y)
-                    self.hand_squares[-1].has_card = True
-
-            num_hand_squares += 1
-            hand_x += 10
         self.num_in_hand = 5
 
         self.discard_x = 10
@@ -132,10 +97,58 @@ class PileUpPoker:
 
         self.game_over_x = self.next_hand_button_x
         self.game_over_y = self.next_hand_button_y
-        # pyxel.load("card.pyxres")
 
-        # pyxel.mouse(True)
+        self.new_game()
+
+        pyxel.mouse(True)
         pyxel.run(self.update,self.draw)
+
+    def new_game(self):
+        self.board = []
+        self.card_clicked = False
+        self.clicked_square = Square()
+
+        self.board.append(Square(24,16))
+        num_rows = 4
+        num_cols = 4
+        r = 0
+        while r < num_rows:
+            c = 0
+            while c < num_cols-1:
+                self.board.append(Square(self.board[-1].x+self.board[-1].w+self.board[-1].margin,
+                                   self.board[-1].y))
+                c += 1
+            r += 1
+            if r < num_rows:
+                self.board.append(Square(self.board[0].x,
+                                          self.board[-1].y+self.board[-1].h+self.board[-1].margin))
+
+        self.hand_squares = []
+        hand_x = 16
+        hand_y = 100
+        num_hand_squares = 0
+        self.dealt_cards = []
+        while num_hand_squares < 5:
+            self.hand_squares.append(Square(hand_x,100))
+            while not self.hand_squares[-1].has_card:
+                dealt_num = pyxel.rndi(1,36)
+                if dealt_num not in self.dealt_cards:
+                    self.dealt_cards.append(dealt_num)
+                    info = CardInfo(dealt_num)
+                    x = self.hand_squares[-1].x
+                    y = self.hand_squares[-1].y
+                    self.hand_squares[-1].card = Card(info.suit,info.rank,x,y)
+                    self.hand_squares[-1].has_card = True
+
+            num_hand_squares += 1
+            hand_x += self.hand_squares[-1].w + 1
+
+        self.num_in_hand = 5
+
+        self.discard_squares = []
+
+        self.game_over = False
+        self.to_next_hand = False
 
     def new_hand(self):
         for sq in self.hand_squares:
@@ -194,13 +207,7 @@ class PileUpPoker:
                         self.discard_squares[-1].card.can_move = False
                         self.discard_squares[-1].card.bg_color = 7
                         sq.has_card = False
-                        # card.in_hand = False
-                        # card.x = self.discard_x
-                        # card.y = self.discard_y
                         self.discard_y += sq.h+1
-                        # self.num_in_hand -= 1
-                    # card.bg_color = 7 # 0
-                    # card.can_move = False
                 if len(self.dealt_cards) < 20:
                     self.new_hand()
                 else:
@@ -212,6 +219,13 @@ class PileUpPoker:
                     and pyxel.mouse_y <= self.next_hand_button_y + self.next_hand_button_h)
                 if next_button and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
                     self.to_next_hand = True
+        if self.game_over:
+            next_button = (pyxel.mouse_x >= self.next_hand_button_x
+                and pyxel.mouse_x <= self.next_hand_button_x + self.next_hand_button_w
+                and pyxel.mouse_y >= self.next_hand_button_y
+                and pyxel.mouse_y <= self.next_hand_button_y + self.next_hand_button_h)
+            if next_button and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+                self.new_game()
 
     def draw(self):
         pyxel.cls(0)
@@ -219,24 +233,32 @@ class PileUpPoker:
         for sq in self.board + self.hand_squares + self.discard_squares:
             sq.draw()
 
-        if self.num_in_hand == 1:
-            next_hand_color = 7
+        if not self.game_over:
+            if self.num_in_hand == 1:
+                next_hand_color = 7
+                pyxel.rect(self.next_hand_button_x,
+                            self.next_hand_button_y,
+                            self.next_hand_button_w,
+                            self.next_hand_button_h,
+                            next_hand_color)
+                pyxel.rect(self.next_hand_button_x+1,
+                            self.next_hand_button_y+1,
+                            self.next_hand_button_w-2,
+                            self.next_hand_button_h-2,
+                            1)
+                pyxel.text(self.next_hand_button_x+1,self.next_hand_button_y+1,
+                            'ADVANCE TO \nNEXT HAND',next_hand_color)
         else:
-            next_hand_color = 1
-        pyxel.rect(self.next_hand_button_x,
-                    self.next_hand_button_y,
-                    self.next_hand_button_w,
-                    self.next_hand_button_h,
-                    next_hand_color)
-        pyxel.rect(self.next_hand_button_x+1,
-                    self.next_hand_button_y+1,
-                    self.next_hand_button_w-2,
-                    self.next_hand_button_h-2,
-                    0)
-        pyxel.text(self.next_hand_button_x+1,self.next_hand_button_y+1,
-                    'ADVANCE TO \nNEXT HAND',next_hand_color)
-        if self.game_over:
-            pyxel.text(self.game_over_x,self.game_over_y,'GAME OVER',7)
-        # pyxel.blt(0,0,pyxel.images[0],2,34,22-2+1,64-34+1)
+            pyxel.rect(self.next_hand_button_x,
+                        self.next_hand_button_y,
+                        self.next_hand_button_w,
+                        self.next_hand_button_h,
+                        7)
+            pyxel.rect(self.next_hand_button_x+1,
+                        self.next_hand_button_y+1,
+                        self.next_hand_button_w-2,
+                        self.next_hand_button_h-2,
+                        1)
+            pyxel.text(self.game_over_x+1,self.game_over_y+1,'PLAY\nAGAIN?',7)
 
 PileUpPoker()
