@@ -43,11 +43,11 @@ class Card:
             return True
         return False
     
-    def draw(self):
-        pyxel.rect(self.x,self.y,self.w,self.h,self.bg_color)
+    def draw(self,sq):
+        pyxel.rect(sq.x,sq.y,sq.w,sq.h,self.bg_color)
         if self.clicked:
-            pyxel.rect(self.x,self.y,self.w,self.h,self.color)
-            pyxel.rect(self.x+1,self.y+1,self.w-2,self.h-2,0)
+            pyxel.rect(sq.x,sq.y,sq.w,sq.h,self.color)
+            pyxel.rect(sq.x+1,sq.y+1,sq.w-2,sq.h-2,0)
         rank_text = str(self.rank)
         if self.rank == 11:
             rank_text = 'J'
@@ -57,7 +57,7 @@ class Card:
             rank_text = 'K'
         elif self.rank == 14:
             rank_text = 'A'
-        pyxel.text(self.x+self.w/4,self.y+self.h/4,rank_text,self.color)
+        pyxel.text(sq.x+sq.w/4,sq.y+sq.h/4,rank_text,self.color)
 
 
 class Square:
@@ -69,6 +69,7 @@ class Square:
         self.margin = margin
         self.color = col
         self.has_card = False
+        self.card = Card()
 
     def in_square(self):
         if (pyxel.mouse_x >= self.x 
@@ -81,7 +82,9 @@ class Square:
     def draw(self):
         pyxel.rect(self.x,self.y,self.w,self.h,self.color)
         pyxel.rect(self.x+self.margin,self.y+self.margin,
-                   self.w-2*self.margin,self.h-2*self.margin,13) # 7)
+                   self.w-2*self.margin,self.h-2*self.margin,13)
+        if self.has_card:
+            self.card.draw(self)
 
 class PileUpPoker:
     def __init__(self):
@@ -103,132 +106,113 @@ class PileUpPoker:
                                           self.board[-1].y+self.board[-1].h+self.board[-1].margin))
 
         self.card_clicked = False
+        self.clicked_square = Square()
 
         self.hand_squares = []
         hand_x = 20
         hand_y = 100
         num_hand_squares = 0
+        self.dealt_cards = []
         while num_hand_squares < 5:
             self.hand_squares.append(Square(hand_x,100))
-            self.hand_squares[-1].has_card = True
+            # self.hand_squares[-1].has_card = True
+            while not self.hand_squares[-1].has_card:
+                dealt_num = pyxel.rndi(1,36)
+                if dealt_num not in self.dealt_cards:
+                    self.dealt_cards.append(dealt_num)
+                    info = CardInfo(dealt_num)
+                    x = self.hand_squares[-1].x
+                    y = self.hand_squares[-1].y
+                    self.hand_squares[-1].card = Card(info.suit,info.rank,x,y)
+                    self.hand_squares[-1].has_card = True
+
             num_hand_squares += 1
             hand_x += 10
-        
-        self.cards = []
-        self.dealt_cards = []
-        hand_x = 20
-        while len(self.dealt_cards) < 5:
-            dealt_num = pyxel.rndi(1,36)
-            if dealt_num not in self.dealt_cards:
-                self.dealt_cards.append(dealt_num)
-                info = CardInfo(dealt_num)
-                self.cards.append(Card(info.suit,info.rank,hand_x,hand_y))
-                hand_x += 10
         self.num_in_hand = 5
+
         self.discard_x = 10
         self.discard_y = 30
+        self.discard_squares = []
 
         self.game_over = False
         self.to_next_hand = False
 
-        self.next_hand_button_x = 20
+        self.next_hand_button_x = 25
         self.next_hand_button_y = 80
         self.next_hand_button_w = 41
         self.next_hand_button_h = 13
+
+        self.game_over_x = self.next_hand_button_x
+        self.game_over_y = self.next_hand_button_y
         # pyxel.load("card.pyxres")
 
-        #pyxel.mouse(True)
+        pyxel.mouse(True)
         pyxel.run(self.update,self.draw)
 
     def new_hand(self):
-        hand_x = 20
-        new_num_in_hand = 0
-        while new_num_in_hand < 5:
-            dealt_num = pyxel.rndi(1,36)
-            if dealt_num not in self.dealt_cards:
-                self.dealt_cards.append(dealt_num)
-                info = CardInfo(dealt_num)
-                self.cards.append(Card(info.suit,info.rank,hand_x,100))
-                hand_x += 10
-                new_num_in_hand += 1
+        for sq in self.hand_squares:
+            while not sq.has_card:
+                dealt_num = pyxel.rndi(1,36)
+                if dealt_num not in self.dealt_cards:
+                    self.dealt_cards.append(dealt_num)
+                    info = CardInfo(dealt_num)
+                    sq.card = Card(info.suit,info.rank,sq.x,sq.y)
+                    sq.has_card = True
         self.num_in_hand = 5
+        self.to_next_hand = False
 
     def update(self):
-        for sq in self.board:
-            if self.card_clicked and sq.in_square() and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
-                has_card = sq.has_card
-                old_card = self.cards[0]
-                for card in self.cards:
-                    if sq.x == card.x and sq.y == card.y:
-                        old_card = card
-                if not has_card or old_card.can_move:
-                    for card in self.cards:
-                        if card.clicked:
-                            if has_card:
-                                old_card.x = card.x
-                                old_card.y = card.y
-                            else:
-                                for old_sq in self.board:
-                                    if old_sq.x == card.x and old_sq.y == card.y:
-                                        old_sq.has_card = False
-                            card.x = sq.x
-                            card.y = sq.y
-                            card.bg_color = 0 # 13
-                            card.clicked = False
-                            sq.has_card = True
-                            if card.in_hand and not has_card:
-                                card.in_hand = False
-                                self.num_in_hand -= 1
-                            self.card_clicked = False
-                            return
-        
-        for sq in self.hand_squares:
-            if self.card_clicked and sq.in_square() and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
-                has_card = sq.has_card
-                old_card = self.cards[0]
-                for card in self.cards:
-                    if sq.x == card.x and sq.y == card.y:
-                        old_card = card
-                if not has_card or old_card.can_move:
-                    for card in self.cards:
-                        if card.clicked:
-                            if has_card:
-                                old_card.x = card.x
-                                old_card.y = card.y
-                            else:
-                                for old_sq in self.hand_squares:
-                                    if old_sq.x == card.x and old_sq.y == card.y:
-                                        old_sq.has_card = False
-                            card.x = sq.x
-                            card.y = sq.y
-                            card.bg_color = 0 # 13
-                            card.clicked = False
-                            sq.has_card = True
-                            if not card.in_hand and not has_card:
-                                card.in_hand = True
-                                self.num_in_hand += 1
-                            self.card_clicked = False
-                            return
-                    
-        for card in self.cards:
-            if card.can_move and card.in_card() and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
-                if not self.card_clicked:
-                    card.clicked = True
+        if not self.card_clicked:
+            for sq in self.board + self.hand_squares:
+                clickable_card = sq.has_card and sq.card.can_move
+                if sq.in_square() and clickable_card and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+                    sq.card.clicked = True
                     self.card_clicked = True
-                else:
-                    card.clicked = False
+                    self.clicked_square = sq
+        else:
+            for sq in self.board + self.hand_squares:
+                clickable_square = not sq.has_card or sq.card.can_move
+                if self.clicked_square in self.hand_squares and self.num_in_hand == 1:
+                    clickable_square = clickable_square and (sq.has_card or sq in self.hand_squares)
+                if sq.in_square() and clickable_square and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+                    old_sq = self.clicked_square
+                    old_card = old_sq.card
+                    old_has_card = old_sq.has_card
+                    old_sq.card = sq.card
+                    old_sq.has_card = sq.has_card
+                    sq.card = old_card
+                    sq.has_card = old_has_card
+                    sq.card.clicked = False
                     self.card_clicked = False
+                    self.clicked_square = sq
+
+        num_in_hand = 0
+        for sq in self.hand_squares:
+            if sq.has_card:
+                num_in_hand += 1
+        self.num_in_hand = num_in_hand
         if self.num_in_hand == 1:
             if self.to_next_hand:
-                for card in self.cards:
-                    if card.in_hand:
-                        card.in_hand = False
-                        card.x = self.discard_x
-                        card.y = self.discard_y
-                        self.discard_y += 14
-                        self.num_in_hand -= 1
-                    card.bg_color = 7 # 0
-                    card.can_move = False
+                for sq in self.board:
+                    if sq.has_card:
+                        sq.card.can_move = False
+                        sq.card.bg_color = 7
+                for sq in self.hand_squares:
+                    if sq.has_card:
+                        card = sq.card
+                        self.discard_squares.append(Square(self.discard_x,self.discard_y))
+                        self.discard_squares[-1].card = card
+                        self.discard_squares[-1].has_card = True
+                        self.discard_squares[-1].card.can_move = False
+                        self.discard_squares[-1].card.bg_color = 7
+                        sq.has_card = False
+                        # card.in_hand = False
+                        # card.x = self.discard_x
+                        # card.y = self.discard_y
+                        self.discard_y += sq.h+1
+                        # self.num_in_hand -= 1
+                    # card.bg_color = 7 # 0
+                    # card.can_move = False
                 if len(self.dealt_cards) < 20:
                     self.new_hand()
                 else:
@@ -241,33 +225,30 @@ class PileUpPoker:
                 if next_button and pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
                     self.to_next_hand = True
 
-            
-
-
     def draw(self):
         pyxel.cls(0)
 
-        for sq in self.board:
+        for sq in self.board + self.hand_squares + self.discard_squares:
             sq.draw()
 
-        for card in self.cards:
-            card.draw()
-
         if self.num_in_hand == 1:
-            pyxel.rect(self.next_hand_button_x,
-                       self.next_hand_button_y,
-                       self.next_hand_button_w,
-                       self.next_hand_button_h,
-                       7)
-            pyxel.rect(self.next_hand_button_x+1,
-                       self.next_hand_button_y+1,
-                       self.next_hand_button_w-2,
-                       self.next_hand_button_h-2,
-                       0)
-            pyxel.text(self.next_hand_button_x+1,self.next_hand_button_y+1,
-                       'ADVANCE TO \nNEXT HAND',7)
+            next_hand_color = 7
+        else:
+            next_hand_color = 1
+        pyxel.rect(self.next_hand_button_x,
+                    self.next_hand_button_y,
+                    self.next_hand_button_w,
+                    self.next_hand_button_h,
+                    next_hand_color)
+        pyxel.rect(self.next_hand_button_x+1,
+                    self.next_hand_button_y+1,
+                    self.next_hand_button_w-2,
+                    self.next_hand_button_h-2,
+                    0)
+        pyxel.text(self.next_hand_button_x+1,self.next_hand_button_y+1,
+                    'ADVANCE TO \nNEXT HAND',next_hand_color)
         if self.game_over:
-            pyxel.text(20,100,'GAME OVER',7)
+            pyxel.text(self.game_over_x,self.game_over_y,'GAME OVER',7)
         # pyxel.blt(0,0,pyxel.images[0],2,34,22-2+1,64-34+1)
 
 PileUpPoker()
