@@ -49,7 +49,7 @@ class Card:
 
 
 class Square:
-    def __init__(self,x=0,y=0,w=10,h=14,margin=1,col=1):
+    def __init__(self,x=0,y=0,w=20,h=28,margin=1,col=1):
         self.x = x
         self.y = y
         self.w = w
@@ -76,7 +76,7 @@ class Square:
 
 class PileUpPoker:
     def __init__(self):
-        pyxel.init(80,120)
+        pyxel.init(160,240)
         self.board = []
         self.card_clicked = False
         self.clicked_square = Square()
@@ -110,9 +110,16 @@ class PileUpPoker:
         self.clicked_square = Square()
         self.score = {}
 
-        self.board.append(Square(24,16))
+        square_width = self.clicked_square.w
+        square_height = self.clicked_square.h
+        square_margin = self.clicked_square.margin
         num_rows = 4
         num_cols = 4
+
+        board_width = square_margin*(num_rows-1) + square_width*num_rows
+        board_height = square_margin*(num_cols-1) + square_height*num_cols
+        self.board.append(Square(0.5*pyxel.width - board_width/2,0.5*pyxel.height - board_height/2))
+
         r = 0
         while r < num_rows:
             c = 0
@@ -126,12 +133,14 @@ class PileUpPoker:
                                           self.board[-1].y+self.board[-1].h+self.board[-1].margin))
 
         self.hand_squares = []
-        hand_x = 16
-        hand_y = 100
+        hand_width = square_margin*(5-1) + square_width*5
+        hand_height = square_height
+        hand_x = 0.5*pyxel.width - hand_width/2
+        hand_y = pyxel.height - hand_height
         num_hand_squares = 0
         self.dealt_cards = []
         while num_hand_squares < 5:
-            self.hand_squares.append(Square(hand_x,100))
+            self.hand_squares.append(Square(hand_x,hand_y))
             while not self.hand_squares[-1].has_card:
                 dealt_num = pyxel.rndi(1,36)
                 if dealt_num not in self.dealt_cards:
@@ -181,9 +190,9 @@ class PileUpPoker:
             isStraight = all(ranks[ii]+1 == ranks[ii+1] for ii in range(len(ranks)-1))
             isStraightFlush = isFlush and isStraight
             if isStraightFlush:
-                return ('staight flush',450)
+                return ('staight\nflush',450)
             elif isFourOfAKind:
-                return ('4 of a kind',325)
+                return ('4 of\na kind',325)
             elif isStraight:
                 return ('straight',180)
             elif isFlush:
@@ -204,7 +213,7 @@ class PileUpPoker:
                 isTwoPair = ranks[0] == ranks[1] and ranks[2] == ranks[3]
                 isThreeOfAKind = any(3 == k for k in ofAKinds)
                 if isThreeOfAKind:
-                    return ('3 of a kind',125)
+                    return ('3 of\na kind',125)
                 elif isTwoPair:
                     return ('2 pair',60)
                 elif isPair:
@@ -221,7 +230,7 @@ class PileUpPoker:
             isPair = any(2 == k for k in ofAKinds)
             isThreeOfAKind = any(3 == k for k in ofAKinds)
             if isThreeOfAKind:
-                return ('3 of a kind',125)
+                return ('3 of\na kind',125)
             elif isPair:
                 return ('pair',5)
         elif len(ranks) == 2:
