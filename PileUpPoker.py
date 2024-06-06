@@ -26,22 +26,10 @@ class Card:
         self.rank = rank
         self.suit = suit
         self.color = self.__colors[suit]
-        self.x = x
-        self.y = y
-        self.w = 10
-        self.h = 14
         self.clicked = False
         self.in_hand = True
         self.bg_color = 0
         self.can_move = True
-
-    def in_card(self):
-        if (pyxel.mouse_x >= self.x 
-            and pyxel.mouse_x <= self.x + self.w
-            and pyxel.mouse_y >= self.y
-            and pyxel.mouse_y <= self.y + self.h):
-            return True
-        return False
     
     def draw(self,sq):
         pyxel.rect(sq.x,sq.y,sq.w,sq.h,self.bg_color)
@@ -146,7 +134,7 @@ class PileUpPoker:
         self.game_over_y = self.next_hand_button_y
         # pyxel.load("card.pyxres")
 
-        pyxel.mouse(True)
+        # pyxel.mouse(True)
         pyxel.run(self.update,self.draw)
 
     def new_hand(self):
