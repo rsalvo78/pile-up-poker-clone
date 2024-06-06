@@ -101,7 +101,7 @@ class PileUpPoker:
 
         self.new_game()
 
-        pyxel.mouse(True)
+        #pyxel.mouse(True)
         pyxel.run(self.update,self.draw)
 
     def new_game(self):
