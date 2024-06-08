@@ -46,20 +46,42 @@ class Card:
         return rank_text 
     
     def draw(self,sq,hasBorder=False):
+        margin_size = 3
         if self.clicked:
             shift_height = 0.2*sq.h
         else:
             shift_height = 0
         if hasBorder:
             pyxel.rect(sq.x,sq.y,sq.w,sq.h,self.color)
-            pyxel.rect(sq.x+1,sq.y-shift_height+1,sq.w-2,sq.h-2,self.bg_color)
+            pyxel.rect(sq.x+margin_size,sq.y-shift_height+margin_size,sq.w-2*margin_size,sq.h-2*margin_size,self.bg_color)
         else:
             pyxel.rect(sq.x,sq.y-shift_height,sq.w,sq.h,self.bg_color)
         rank_text = self.rank_text()
-        pyxel.text(sq.x+sq.w/4,sq.y+sq.h/4-shift_height,rank_text,self.color)
+        text_width = 3
+        if self.rank == 10:
+            text_width += 4
+        pyxel.text(sq.x+sq.w/2-text_width,sq.y+sq.h/2-shift_height,rank_text,self.color)
+        u = 0
+        v = 0
+        if self.suit == 'H':
+            u = 0
+            v = 0
+        elif self.suit == 'D':
+            u = 8
+            v = 0
+        elif self.suit == 'S':
+            u = 8
+            v = 8
+        else: # self.suit == 'C'
+            u = 0
+            v = 8
+
+        img_w = 8
+        img_h = 8
+        pyxel.blt(sq.x+sq.w-img_w-margin_size,sq.y-shift_height+margin_size,1,u,v,img_w,img_h)
 
 class Square:
-    def __init__(self,x=0,y=0,w=20,h=28,margin=1,col=1):
+    def __init__(self,x=0,y=0,w=30,h=42,margin=1,col=1):
         self.x = x
         self.y = y
         self.w = w
@@ -86,10 +108,11 @@ class Square:
 
 class PileUpPoker:
     def __init__(self):
-        pixel_scale = 20
-        phone_width = 9
-        phone_height = 19.5
+        pixel_scale = 2 #20
+        phone_width = 120 #9
+        phone_height = 160 #19.5
         pyxel.init(int(pixel_scale*phone_width),int(pixel_scale*phone_height))
+        pyxel.load('card.pyxres')
         self.board = []
         self.card_clicked = False
         self.clicked_square = Square()
@@ -104,7 +127,7 @@ class PileUpPoker:
         self.game_over = False
         self.to_next_hand = False
 
-        self.next_hand_button_w = 57
+        self.next_hand_button_w = 61
         self.next_hand_button_h = 13
         self.next_hand_button_x = 0.5*pyxel.width - self.next_hand_button_w/2
         self.next_hand_button_y = 0.85*pyxel.height - self.next_hand_button_h/2
@@ -331,6 +354,7 @@ class PileUpPoker:
                         self.discard_squares[-1].card = card
                         self.discard_squares[-1].has_card = True
                         self.discard_squares[-1].card.can_move = False
+                        self.discard_squares[-1].card.clicked = False
                         self.discard_squares[-1].card.bg_color = 7
                         sq.has_card = False
                         self.discard_y += sq.h+1
@@ -365,7 +389,7 @@ class PileUpPoker:
             y = score_info[1][1]
             hand_type = score_info[0][0]
             score = score_info[0][1]
-            if score > 0:
+            if score >= 0:
                 pyxel.text(x,y,hand_type + '\n$' + str(score),7)
 
         for sq in self.board:
