@@ -28,16 +28,14 @@ class Card:
         self.color = self.__colors[suit]
         self.clicked = False
         self.in_hand = True
-        self.bg_color = 0
+        self.bg_color = 7
         self.can_move = True
-    
-    def draw(self,sq):
-        pyxel.rect(sq.x,sq.y,sq.w,sq.h,self.bg_color)
-        if self.clicked:
-            pyxel.rect(sq.x,sq.y,sq.w,sq.h,self.color)
-            pyxel.rect(sq.x+1,sq.y+1,sq.w-2,sq.h-2,0)
-        rank_text = str(self.rank)
-        if self.rank == 11:
+
+    def rank_text(self):
+        rank_text = ''
+        if self.rank <= 10:
+            rank_text = str(self.rank)
+        elif self.rank == 11:
             rank_text = 'J'
         elif self.rank == 12:
             rank_text = 'Q'
@@ -45,8 +43,20 @@ class Card:
             rank_text = 'K'
         elif self.rank == 14:
             rank_text = 'A'
-        pyxel.text(sq.x+sq.w/4,sq.y+sq.h/4,rank_text,self.color)
-
+        return rank_text 
+    
+    def draw(self,sq,hasBorder=False):
+        if self.clicked:
+            shift_height = 0.2*sq.h
+        else:
+            shift_height = 0
+        if hasBorder:
+            pyxel.rect(sq.x,sq.y,sq.w,sq.h,self.color)
+            pyxel.rect(sq.x+1,sq.y-shift_height+1,sq.w-2,sq.h-2,self.bg_color)
+        else:
+            pyxel.rect(sq.x,sq.y-shift_height,sq.w,sq.h,self.bg_color)
+        rank_text = self.rank_text()
+        pyxel.text(sq.x+sq.w/4,sq.y+sq.h/4-shift_height,rank_text,self.color)
 
 class Square:
     def __init__(self,x=0,y=0,w=20,h=28,margin=1,col=1):
@@ -70,13 +80,16 @@ class Square:
     def draw(self):
         pyxel.rect(self.x,self.y,self.w,self.h,self.color)
         pyxel.rect(self.x+self.margin,self.y+self.margin,
-                   self.w-2*self.margin,self.h-2*self.margin,13)
+                   self.w-2*self.margin,self.h-2*self.margin,1)
         if self.has_card:
             self.card.draw(self)
 
 class PileUpPoker:
     def __init__(self):
-        pyxel.init(160,240)
+        pixel_scale = 20
+        phone_width = 9
+        phone_height = 19.5
+        pyxel.init(int(pixel_scale*phone_width),int(pixel_scale*phone_height))
         self.board = []
         self.card_clicked = False
         self.clicked_square = Square()
@@ -91,17 +104,22 @@ class PileUpPoker:
         self.game_over = False
         self.to_next_hand = False
 
-        self.next_hand_button_w = 41
+        self.next_hand_button_w = 57
         self.next_hand_button_h = 13
         self.next_hand_button_x = 0.5*pyxel.width - self.next_hand_button_w/2
         self.next_hand_button_y = 0.85*pyxel.height - self.next_hand_button_h/2
+
+        self.final_score_w = 93
+        self.final_score_h = 26
+        self.final_score_x = 0.5*pyxel.width - self.final_score_w/2
+        self.final_score_y = 0.15*pyxel.height - self.final_score_h/2
 
         self.game_over_x = self.next_hand_button_x
         self.game_over_y = self.next_hand_button_y
 
         self.new_game()
 
-        #pyxel.mouse(True)
+        pyxel.mouse(True)
         pyxel.run(self.update,self.draw)
 
     def new_game(self):
@@ -266,6 +284,8 @@ class PileUpPoker:
                 y = self.board[ii[0]].y - 20
             self.score[name] = (self.hand_score(hand),[x,y])
 
+        self.score['discard'] = (self.hand_score(self.discard_squares),[self.discard_x,self.discard_y])
+
     def update(self):
         if not self.card_clicked:
             for sq in self.board + self.hand_squares:
@@ -347,6 +367,14 @@ class PileUpPoker:
             score = score_info[0][1]
             if score > 0:
                 pyxel.text(x,y,hand_type + '\n$' + str(score),7)
+
+        for sq in self.board:
+            if sq.has_card and sq.card.can_move and not sq.card.clicked:
+                sq.card.draw(sq,hasBorder=True)
+        for sq in self.board + self.hand_squares:
+            if sq.card.clicked:
+                sq.draw()
+
         if not self.game_over:
             if self.num_in_hand == 1:
                 next_hand_color = 7
@@ -360,9 +388,65 @@ class PileUpPoker:
                             self.next_hand_button_w-2,
                             self.next_hand_button_h-2,
                             1)
+                discard_card_text = ''
+                for sq in self.hand_squares:
+                    if sq.has_card:
+                        discard_card_text = sq.card.rank_text() + sq.card.suit
                 pyxel.text(self.next_hand_button_x+1,self.next_hand_button_y+1,
-                            'ADVANCE TO \nNEXT HAND',next_hand_color)
+                            'END ROUND\n' + discard_card_text + ' --> Discard',next_hand_color)
         else:
+            total_winnings = 0
+            discard_score = 0
+            num_hands = 0
+            for name in self.score:
+                if name == 'discard':
+                    continue
+                score_info = self.score[name]
+                score = score_info[0][1]
+                if name == 'corners':
+                    score *= 2
+                if score > 0:
+                    total_winnings += score
+                    num_hands += 1
+            score_info = self.score['discard']
+            discard_score = score_info[0][1]
+            if num_hands == 9 and discard_score > 0:
+                num_hands += 1
+            
+            hand_mult = 1
+            if num_hands > 1 and num_hands <= 3:
+                hand_mult = 2
+            elif num_hands <= 5:
+                hand_mult = 3
+            elif num_hands <= 7:
+                hand_mult = 4
+            elif num_hands <= 9:
+                hand_mult = 5
+            elif num_hands == 10:
+                hand_mult = 6
+            
+            winnings_text = 'Winnings $' + str(total_winnings)
+            discard_hand_text = 'Discard hand ' + str(discard_score) + ' x 3'
+            multiplier_text = 'Multiplier ' + str(num_hands) + ' hands x ' + str(hand_mult)
+            total_score_text = 'Total score $' + str((total_winnings + discard_score)*hand_mult)
+            score_text = winnings_text + '\n' + discard_hand_text + '\n' + multiplier_text + '\n' + total_score_text
+            pyxel.rect(self.final_score_x,
+                       self.final_score_y,
+                       self.final_score_w,
+                       self.final_score_h,
+                       7)
+            pyxel.rect(self.final_score_x+1,
+                       self.final_score_y+1,
+                       self.final_score_w-2,
+                       self.final_score_h-2,
+                       0)
+            if num_hands == 10:
+                pyxel.text(self.final_score_x+1,self.final_score_y+1,score_text,7)
+            else:
+                pyxel.text(self.final_score_x+1,self.final_score_y+1,score_text,1)
+                score_text = winnings_text + '\n\n' + multiplier_text + '\n' + total_score_text
+                pyxel.text(self.final_score_x+1,self.final_score_y+1,score_text,7)
+            
             pyxel.rect(self.next_hand_button_x,
                         self.next_hand_button_y,
                         self.next_hand_button_w,
@@ -373,6 +457,6 @@ class PileUpPoker:
                         self.next_hand_button_w-2,
                         self.next_hand_button_h-2,
                         1)
-            pyxel.text(self.game_over_x+1,self.game_over_y+1,'PLAY\nAGAIN?',7)
+            pyxel.text(self.game_over_x+1,self.game_over_y+1,'PLAY AGAIN?',7)
 
 PileUpPoker()
