@@ -173,7 +173,7 @@ class PileUpPoker:
 
         self.new_game()
 
-        #pyxel.mouse(True)
+        pyxel.mouse(True)
         pyxel.run(self.update,self.draw)
 
     def new_game(self):
@@ -228,6 +228,8 @@ class PileUpPoker:
 
         self.num_in_hand = 5
 
+        self.discard_x = 0.1*pyxel.width
+        self.discard_y = 0.3*pyxel.height
         self.discard_squares = []
 
         self.game_over = False
